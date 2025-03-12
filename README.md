@@ -85,4 +85,65 @@ Funkcja authenticate():
 
     print(f"Token zapisany dla użytkownika: {user_email}")
 
-Wykorzystuje `credentials.json` i zapisuje je do `token.json`
+Wykorzystuje `credentials.json` i zapisuje je do `token.json` oraz wysyłam zapytanie API, by uzyskać **email**
+
+Przechodząc do pliku `oppa.py` 
+
+    import email.header
+    import imaplib
+    import json
+    import email
+    import os
+
+Importuje potrzebne biblioteki (opisane wyżej)
+
+funkcja load_token():
+
+    try:
+        with open(TOKEN_FILE, "r") as token_file:
+            creds = json.load(token_file)
+        return creds["token"], creds.get("email")
+    except FileNotFoundError:
+        print("Błąd: Plik token.json nie istnieje. Uruchom auth.py.")
+        exit(1)
+
+Otwieram plik `token.json` i zapisuje **token** oraz **email**, w razie braku token.json zwracam błąd.
+
+funkcja decode_subject():
+
+    decoded_parts=email.header.decode_header(subject)
+    decoded_subject = ""
+
+    for part, encoding in decoded_parts:
+        if isinstance(part, bytes):
+            decoded_subject += part.decode(encoding or "utf-8")
+        else:
+            decoded_subject += part
+    return decoded_subject
+
+Używam `decode_header` z biblioteki `email`, by przetłumaczyć temat, który później będzie wyciągany z emaili.
+Zapętlam się przez cały subject sprawdzając czy część jest zapisana w bajtach (prawdopodobnie jest to polski znak) odpowiednio go dekoduje i dodaje go do ciągu znaków.
+
+funkcja connect_to_email():
+
+    access_token, imap_user = load_token()
+
+    if not imap_user:
+        print("Błąd: Brak adresu e-mail w token.json.")
+        exit(1)
+
+    print(f"Logowanie do IMAP jako {imap_user}")
+    auth_string = f"user={imap_user}\x01auth=Bearer {access_token}\x01\x01"
+
+    try:
+        mail = imaplib.IMAP4_SSL(IMAP_SERVER)
+        mail.authenticate("XOAUTH2", lambda _: auth_string)
+        print("Połączenie z IMAP nawiązane.")
+        return mail
+    except imaplib.IMAP4.error as e:
+        print(f"Błąd logowania IMAP: {e}")
+        exit(1)
+
+Wykorzystuje wcześniej utworzoną funkcje `load_token()`, by wyciągnać dane.
+Przygotowuje łańcuch weryfikacji i łącze się z serwerem. W razie niepowodzenia wyświetlam błąd.
+ 
