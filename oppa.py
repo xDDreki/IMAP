@@ -59,7 +59,7 @@ def connect_to_email():
         print(f"Błąd logowania IMAP: {e}")
         exit(1)
 
-
+# Wyciąga załącznik z wiadomości
 def get_attachment(msg):
     for part in msg.walk():
         if part.get_content_disposition() == "attachment":
@@ -75,6 +75,7 @@ def get_attachment(msg):
 def process_emails():
     mail = connect_to_email()
 
+    # Pobranie tylko wiadomości z konkretnego folderu (INBOX)
     status, _ = mail.select(FOLDER_SOURCE)
     # print(status)
     if status != "OK":
@@ -90,9 +91,9 @@ def process_emails():
         return
 
     message_ids = messages[0].split()
-    print(message_ids)
     email_count = 0
 
+    #Iterowanie po każdej wiadomości która spełnia kryteria.
     for num in message_ids:
         status, msg_data = mail.fetch(num, "(RFC822)")
 
@@ -103,6 +104,7 @@ def process_emails():
         raw_email = msg_data[0][1]
         msg = email.message_from_bytes(raw_email)
 
+        #Zapisanie tematu do subjects.txt
         subject = decode_subject(msg["subject"])
         if subject:
             email_count += 1

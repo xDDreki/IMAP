@@ -13,7 +13,7 @@ Oraz dla programu dodatkowego ***`auth.py`***:
 - json - zapisywanie oraz tworzenie ``token.json``
 - requests - "wyciąganie" emaila poprzez Google API oraz zdobyty token
 
-By całe przedwsięzięcie cyklicznie pobierało emaile, wykorzystał bym `cron`-a lub `systemd timer`
+By całe przedwsięzięcie cyklicznie pobierało emaile, wykorzystał bym `cron`-a lub `systemd`
 ## Sposób działania 
 1.	Odpalenie programu
 2.	Zalogowanie się przez konto Gmail i zapisanie danych (token oraz email)
@@ -178,7 +178,7 @@ Funkcja process_mail() jest dość długa, więc będę ją omawiał w segmentac
         return
 
 
-Łącze się z gmailem używając `connect_to_email()` oraz definiuje status, czyli *tutaj* miejsce z którego mają być zabierane maile
+Łącze się z gmailem za pomocą protokołu IMAP używając `connect_to_email()` oraz definiuje status, czyli *tutaj* miejsce z którego mają być zabierane maile
 
     print(f"Szukam wiadomości zawierających [RED] w temacie...")
 
@@ -189,5 +189,69 @@ Funkcja process_mail() jest dość długa, więc będę ją omawiał w segmentac
 
 Definiuje kryteria wyszukiwania (SUBJECT "[RED]") czyli emaile, które zawierają w temacie ten ciąg znaków. W razie błędu zwracam komunikat.
 
+    message_ids = messages[0].split()
+    email_count = 0
+
+    for num in message_ids:
+        status, msg_data = mail.fetch(num, "(RFC822)")
+
+        if status != "OK":
+            print(f"Błąd pobierania wiadomości {num}.")
+            continue
+
+Definiuje `message_ids` czyli listę id wiadomości, które pasuja do wyszukiwania i iterujemy przez nią.
+Pobieram całą zawartość wiadomości przez `mail.fetch()` i w razie błędu zwracamy błąd i ją pomijamy.
+
+        raw_email = msg_data[0][1]
+        msg = email.message_from_bytes(raw_email)
+
+        subject = decode_subject(msg["subject"])
+        if subject:
+            email_count += 1
+            with open(SUBJECTS_FILE, 'a') as subj:
+                subj.write(f"{subject}\n")
+
+            print(f"Znaleziono wiadomość: {subject}")
+
+            get_attachment(msg)
+
+Przekształcam wiadomość z bajtów za pomocą `email.message_from_bytes` w obiekt EmailMessage
+
+Odczytuje temat i zapisuje go do wcześniej zdefiniowanej lokacji. Wywołuje funkcje `get_attachment(`*`msg`*`)`
+
+            mail.store(num, "+X-GM-LABELS", FOLDER_TARGET)
+            mail.store(num, "+FLAGS", "\\Deleted")
+            print(f"Wiadomość przeniesiona do {FOLDER_TARGET}")
+
+    mail.expunge()
+    mail.logout()
+
+    if email_count > 0:
+        print(f"Przetworzono {email_count} wiadomości.")
+    else:
+        print("Brak wiadomości do przetworzenia.")
+
+Na końcu, przenoszę maila do oznaczonego folderu (OLD-RED) i oznaczam ją do usunięcia - robie to by uniknąć ponownego skanowania wiadomości które znajdują się w OLD-RED.
+
+Usuwam oznaczone wiadomości i kończe połączenie z serwerem. Podsumowywuje ilość przetworzonych wiadomości lub wyświetlam ich brak.
+
+## Działanie projektu
+
+Do sprawdzenia jak działa PoC trzeba użyć konkretnego emaila:
+
+testimap991@gmail.com hasło: zaq1@WSX
+
+Jako że aplikacja utworzona w Google Cloud (do obsługi tokenu OAUTH2) ma status "Testowania" trzeba używać emaila, który jest tam dodany. 
+
+- Wysyłamy jakieś maile, które chcemy przetestować na podany adres 
+- Odpalamy  `auth.py`, co da nam token
+- Odpalamy `main.py` by zrobić całą reszte.
+  
+
+Dodatkowo skoro projekt wymaga kompatybilności z Linuxem, można wykorzystać narzędzie `cron` do cyklicznego uruchamiania tego programu. Choć `cron` jest lekko łatwiejszy (czytaj krótszy w utworzeniu) lepszym wyborem byłby `systemd` i utworzenie tam timera, który uruchamiałby skrypt np.: co 10 minut.
+
+  Pozdrawiam, smacznej kawusi/herbatki c:
+
+Ps. Proszę nie zmieniać `credentials.json`
 
 
