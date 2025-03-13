@@ -77,7 +77,6 @@ def process_emails():
 
     # Pobranie tylko wiadomości z konkretnego folderu (INBOX)
     status, _ = mail.select(FOLDER_SOURCE)
-    # print(status)
     if status != "OK":
         print(f"Błąd wyboru folderu {FOLDER_SOURCE}.")
         return
