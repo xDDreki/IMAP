@@ -8,6 +8,7 @@ SCOPES = [
     "openid"
 ]
 
+#Wysyłanie zapytania na bazie tokenu, by wyciągnąć email
 def get_user_email(access_token):
     response = requests.get(
         "https://www.googleapis.com/oauth2/v1/userinfo",
@@ -16,7 +17,7 @@ def get_user_email(access_token):
     return response.json().get("email")
 
 def authenticate():
-    #Autoryzację OAuth i później zapisuje token, e-mail użytkownika.
+    #Autoryzację OAuth i później zapisuje token i e-mail użytkownika.
     flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
     creds = flow.run_local_server(host='localhost',port=8080)
 
@@ -37,4 +38,5 @@ def authenticate():
 
     print(f"Token zapisany dla użytkownika: {user_email}")
 
+#Uruchomienie progrmu
 authenticate()

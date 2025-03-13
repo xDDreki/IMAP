@@ -147,3 +147,47 @@ funkcja connect_to_email():
 Wykorzystuje wcześniej utworzoną funkcje `load_token()`, by wyciągnać dane.
 Przygotowuje łańcuch weryfikacji i łącze się z serwerem. W razie niepowodzenia wyświetlam błąd.
  
+Funkcja get_attachment():
+    
+    for part in msg.walk():
+        if part.get_content_disposition()=="attachment":
+            filename = part.get_filename()
+
+            if filename:
+                filepath = os.path.join(SAVE_DIR,filename)
+                with open(filepath, 'wb') as f:
+                    f.write(part.get_payload(decode=True))
+
+                print(f"Zapisano załącznik: {filename}")
+
+Funkcja ta jest wykorzystywana później w process_mail(), oddzieliłem ją od process_mail() by łatwiej się czytało kod.
+Wywoływana jest gdy zostały pobrane emaile spełniające nasze kryteria i wiadomości są sparsowane.
+
+W skrócie iterujemy przechodząc przez wszystkie części wiadomości dzięki msg.walk() i gdy natrafimy na załącznik funkcja pobierze nazwe pliku i zainicjuje zapisanie załącznika.
+
+
+
+Funkcja process_mail() jest dość długa, więc będę ją omawiał w segmentach.
+
+    mail = connect_to_email()
+
+    status, _ = mail.select(FOLDER_SOURCE)
+    # print(status)
+    if status != "OK":
+        print(f"Błąd wyboru folderu {FOLDER_SOURCE}.")
+        return
+
+
+Łącze się z gmailem używając `connect_to_email()` oraz definiuje status, czyli *tutaj* miejsce z którego mają być zabierane maile
+
+    print(f"Szukam wiadomości zawierających [RED] w temacie...")
+
+    status, messages = mail.search(None, '(SUBJECT "[RED]")')
+    if status != "OK":
+        print("Błąd podczas wyszukiwania wiadomości.")
+        return
+
+Definiuje kryteria wyszukiwania (SUBJECT "[RED]") czyli emaile, które zawierają w temacie ten ciąg znaków. W razie błędu zwracam komunikat.
+
+
+

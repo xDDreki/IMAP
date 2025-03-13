@@ -60,6 +60,17 @@ def connect_to_email():
         exit(1)
 
 
+def get_attachment(msg):
+    for part in msg.walk():
+        if part.get_content_disposition() == "attachment":
+            filename = part.get_filename()
+            if filename:
+                filepath = os.path.join(SAVE_DIR, filename)
+                with open(filepath, 'wb') as f:
+                    f.write(part.get_payload(decode=True))
+
+                print(f"Zapisano załącznik: {filename}")
+
 # Pobiera i przetwarza e-maile
 def process_emails():
     mail = connect_to_email()
@@ -79,6 +90,7 @@ def process_emails():
         return
 
     message_ids = messages[0].split()
+    print(message_ids)
     email_count = 0
 
     for num in message_ids:
@@ -99,15 +111,7 @@ def process_emails():
 
             print(f"Znaleziono wiadomość: {subject}")
 
-            for part in msg.walk():
-                if part.get_content_disposition() == "attachment":
-                    filename = part.get_filename()
-                    if filename:
-                        filepath = os.path.join(SAVE_DIR, filename)
-                        with open(filepath, 'wb') as f:
-                            f.write(part.get_payload(decode=True))
-
-                        print(f"Zapisano załącznik: {filename}")
+            get_attachment(msg)
 
             # Przeniesienie wiadomości do OLD-RED
             mail.store(num, "+X-GM-LABELS", FOLDER_TARGET)
@@ -115,7 +119,7 @@ def process_emails():
             print(f"Wiadomość przeniesiona do {FOLDER_TARGET}")
 
     mail.expunge()  # Usunięcie oznaczonych wiadomości
-    mail.logout()
+    mail.logout() # Wylogowanie się z maila
 
     if email_count > 0:
         print(f"Przetworzono {email_count} wiadomości.")
